@@ -22,12 +22,7 @@ class MatchingEngineTest {
 
     /** Builds an order with the next sequential id. */
     private Order order(Side side, int price, int quantity) {
-        Order o = new Order();
-        o.setId(nextOrderId++);
-        o.setSide(side);
-        o.setPrice(price);
-        o.setQuantity(quantity);
-        return o;
+        return new Order(nextOrderId++, side, price, quantity);
     }
 
     private Order buy(int price, int quantity) {
