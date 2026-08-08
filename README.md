@@ -4,7 +4,7 @@ A limit-order-book matching engine written in core Java, built as a study projec
 low-latency Java engineering. The goal is not just to make it *work*, but to make it
 *fast* — and to measure every step of that journey.
 
-The plan is to start from a deliberately simple, idiomatic implementation and then
+The plan is to start from a deliberately simple implementation and then
 iterate: change one thing at a time, re-run the benchmark, and record the latency
 improvement (or regression). The README, benchmark numbers, and commit history together
 tell the story of how a naive engine is turned into a low-latency one.
@@ -110,19 +110,49 @@ mvn exec:java -Dexec.classpathScope=test -Dexec.mainClass=org.openjdk.jmh.Main
 > (`java -jar target/benchmarks.jar`) — this will likely be added as the benchmarking
 > workflow matures.
 
+## Results
+
+### Baseline — `TreeMap` + `LinkedList`
+
+Latency of a single crossing `submitOrder` call, JMH `SampleTime` mode, 888,579 samples:
+
+```
+Benchmark                                          Mode     Cnt      Score      Error  Units
+submitCrossingOrder                              sample  888579    420.956 ± 500.946  ns/op
+submitCrossingOrder:p0.00                        sample                ≈ 0            ns/op
+submitCrossingOrder:p0.50                        sample             42.000            ns/op
+submitCrossingOrder:p0.90                        sample             84.000            ns/op
+submitCrossingOrder:p0.95                        sample            208.000            ns/op
+submitCrossingOrder:p0.99                        sample            250.000            ns/op
+submitCrossingOrder:p0.999                       sample           3916.000            ns/op
+submitCrossingOrder:p0.9999                      sample          68918.528            ns/op
+submitCrossingOrder:p1.00                        sample       95944704.000            ns/op
+```
+
+Reading this baseline:
+
+- The **median (p50) is 42 ns** and p90 is 84 ns — the common, in-cache path is already fast.
+- The **mean (421 ns) sits far above the median**, dragged up by a long tail: p99.9 jumps to
+  ~3.9 µs, p99.99 to ~69 µs, and the max to ~96 ms. That tail is the interesting part — it's
+  the signature of **allocation and GC** (new `LinkedList`/`Trade` per call, autoboxing of
+  `Integer` prices) plus JIT/OS noise, exactly the behaviour later steps aim to flatten.
+- The large `± 500 ns` error on the mean is expected for a heavy-tailed distribution — which
+  is why the percentiles, not the mean, are the numbers to track over time.
+
 ## Roadmap
 
 This project is iterative. Each step changes the implementation and records the resulting
 latency against the baseline:
 
 - [x] Baseline: `TreeMap` + `LinkedList` order book, JMH benchmark in place
-- [ ] Record baseline latency numbers here
-- [ ] Iterate on data structures and allocation, measuring the delta at each step
+- [x] Record baseline latency numbers
+- [ ] Attack the tail: reduce per-call allocation and autoboxing
+- [ ] Iterate on data structures, measuring the delta at each step
 
 ### Latency log
 
-| Step | Change | p50 (ns) | p99 (ns) | Notes |
-|---|---|---|---|---|
-| Baseline | `TreeMap` + `LinkedList` | _tbd_ | _tbd_ | |
+| Step | Change | p50 (ns) | p99 (ns) | p99.9 (ns) | Mean (ns) | Notes |
+|---|---|---|---|---|---|---|
+| Baseline | `TreeMap` + `LinkedList` | 42 | 250 | 3,916 | 421 | Heavy tail from allocation/GC |
 
-_(Fill in as benchmarks are recorded.)_
+_(Add a row per optimisation step.)_
