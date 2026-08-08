@@ -8,6 +8,7 @@ import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
@@ -15,6 +16,7 @@ import org.openjdk.jmh.annotations.Warmup;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import com.jackjenkinson.MatchingEngine;
+import com.jackjenkinson.MatchingEngineSolutions.EngineSolution;
 import com.jackjenkinson.Order;
 import com.jackjenkinson.Side;
 import com.jackjenkinson.Trade;
@@ -27,12 +29,17 @@ import com.jackjenkinson.Trade;
 @State(Scope.Thread)
 public class SubmitOrderBenchmark {
 
+    // Which solution(s) to benchmark. List names to compare several; remove the values
+    // entirely to run every registered solution. Overridable on the CLI: -p solution=SOLUTION_1
+    @Param({"SOLUTION_1"})
+    public EngineSolution solution;
+
     private MatchingEngine engine;
     private long nextId;
 
     @Setup(Level.Iteration)
     public void setup() {
-        engine = new MatchingEngine();
+        engine = solution.create();
         for (int p = 90; p <= 110; p++) {
             engine.submitOrder(new Order(nextId++, Side.BUY,  p, 100));
             engine.submitOrder(new Order(nextId++, Side.SELL, p + 20, 100));

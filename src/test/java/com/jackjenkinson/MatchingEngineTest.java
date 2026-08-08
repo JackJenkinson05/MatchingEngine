@@ -3,22 +3,17 @@ package com.jackjenkinson;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.jackjenkinson.MatchingEngineSolutions.EngineSolution;
 import java.util.List;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
+@DisplayName("MatchingEngine contract")
 class MatchingEngineTest {
 
-    private MatchingEngine engine;
-    private long nextOrderId;
-
-    @BeforeEach
-    void setUp() {
-        engine = new MatchingEngine();
-        nextOrderId = 1L;
-    }
+    private long nextOrderId = 1L;
 
     /** Builds an order with the next sequential id. */
     private Order order(Side side, int price, int quantity) {
@@ -37,20 +32,24 @@ class MatchingEngineTest {
     @DisplayName("resting orders (no match)")
     class Resting {
 
-        @Test
+        @ParameterizedTest(name = "[{0}]")
+        @EnumSource(EngineSolution.class)
         @DisplayName("a lone order produces no trades")
-        void loneOrderProducesNoTrades() {
+        void loneOrderProducesNoTrades(EngineSolution solution) {
             // given when
+            MatchingEngine engine = solution.create();
             List<Trade> trades = engine.submitOrder(buy(100, 10));
 
             //then
             assertTrue(trades.isEmpty());
         }
 
-        @Test
+        @ParameterizedTest(name = "[{0}]")
+        @EnumSource(EngineSolution.class)
         @DisplayName("non-crossing bid and ask do not match")
-        void nonCrossingOrdersDoNotMatch() {
+        void nonCrossingOrdersDoNotMatch(EngineSolution solution) {
             //given
+            MatchingEngine engine = solution.create();
             engine.submitOrder(buy(99, 10));
 
             //when
@@ -65,10 +64,12 @@ class MatchingEngineTest {
     @DisplayName("matching")
     class Matching {
 
-        @Test
+        @ParameterizedTest(name = "[{0}]")
+        @EnumSource(EngineSolution.class)
         @DisplayName("exact match fully fills both orders at the resting price")
-        void exactMatch() {
+        void exactMatch(EngineSolution solution) {
             //given
+            MatchingEngine engine = solution.create();
             Order resting = buy(100, 10);
             engine.submitOrder(resting);
 
@@ -85,10 +86,12 @@ class MatchingEngineTest {
             assertEquals(10, trade.quantity());
         }
 
-        @Test
+        @ParameterizedTest(name = "[{0}]")
+        @EnumSource(EngineSolution.class)
         @DisplayName("crossing order trades at the resting order's price")
-        void tradesAtRestingPrice() {
+        void tradesAtRestingPrice(EngineSolution solution) {
             //given
+            MatchingEngine engine = solution.create();
             Order resting = sell(100, 10);
             engine.submitOrder(resting);
 
@@ -102,10 +105,12 @@ class MatchingEngineTest {
             assertEquals(10, trades.get(0).quantity());
         }
 
-        @Test
+        @ParameterizedTest(name = "[{0}]")
+        @EnumSource(EngineSolution.class)
         @DisplayName("incoming order partially fills a larger resting order")
-        void incomingPartiallyFillsResting() {
+        void incomingPartiallyFillsResting(EngineSolution solution) {
             //given
+            MatchingEngine engine = solution.create();
             engine.submitOrder(buy(100, 10));
 
             //when
@@ -121,10 +126,12 @@ class MatchingEngineTest {
             assertEquals(6, more.get(0).quantity());
         }
 
-        @Test
+        @ParameterizedTest(name = "[{0}]")
+        @EnumSource(EngineSolution.class)
         @DisplayName("large incoming order is filled across multiple resting orders")
-        void sweepsMultipleRestingOrders() {
+        void sweepsMultipleRestingOrders(EngineSolution solution) {
             //given
+            MatchingEngine engine = solution.create();
             Order first = buy(100, 5);
             Order second = buy(100, 5);
             engine.submitOrder(first);
@@ -138,9 +145,11 @@ class MatchingEngineTest {
             assertEquals(10, totalQuantity(trades));
         }
 
-        @Test
+        @ParameterizedTest(name = "[{0}]")
+        @EnumSource(EngineSolution.class)
         @DisplayName("incoming order rests after consuming all available liquidity")
-        void restsRemainderAfterPartialSweep() {
+        void restsRemainderAfterPartialSweep(EngineSolution solution) {
+            MatchingEngine engine = solution.create();
             engine.submitOrder(sell(100, 4));
 
             List<Trade> trades = engine.submitOrder(buy(100, 10));
@@ -156,9 +165,11 @@ class MatchingEngineTest {
     @DisplayName("priority")
     class Priority {
 
-        @Test
+        @ParameterizedTest(name = "[{0}]")
+        @EnumSource(EngineSolution.class)
         @DisplayName("best-priced resting order matches first (price priority)")
-        void bestPriceMatchesFirst() {
+        void bestPriceMatchesFirst(EngineSolution solution) {
+            MatchingEngine engine = solution.create();
             engine.submitOrder(sell(102, 10));
             Order best = sell(100, 10);
             engine.submitOrder(best);
@@ -170,9 +181,11 @@ class MatchingEngineTest {
             assertEquals(best.getId(), trades.get(0).sellOrderId());
         }
 
-        @Test
+        @ParameterizedTest(name = "[{0}]")
+        @EnumSource(EngineSolution.class)
         @DisplayName("at equal price, the earliest resting order matches first (time priority)")
-        void earliestOrderMatchesFirstAtSamePrice() {
+        void earliestOrderMatchesFirstAtSamePrice(EngineSolution solution) {
+            MatchingEngine engine = solution.create();
             Order early = buy(100, 10);
             Order late = buy(100, 10);
             engine.submitOrder(early);
